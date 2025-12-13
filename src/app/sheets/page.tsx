@@ -1,337 +1,444 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { Table, Plus, FileSpreadsheet, Trash2, MoreVertical, Save } from 'lucide-react'
+import React, { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { SheetsSidebar } from '@/components/sheets/SheetsSidebar'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import dynamic from 'next/dynamic'
+import { useSheetsContext } from '@/components/SheetsProvider'
+import type { SheetPage, SheetFolder } from '@/types/sheets'
+import { Table, Plus, X, FolderOpen, MoreVertical, Folder, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useLuckysheetList, type LuckysheetPage } from '@/hooks/useLuckysheetList'
-import { useLuckysheetSave } from '@/hooks/useLuckysheetSave'
-import { useAuth } from '@/components/AuthProvider'
-import { useAppData } from '@/components/AppDataProvider'
-import { supabase } from '@/lib/supabase'
-import { useDebouncedCallback } from 'use-debounce'
+import { SheetFolderDialog } from '@/components/sheets/SheetFolderDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
 
-// Dynamically import Luckysheet component (client-side only)
-const LuckysheetComponent = dynamic(() => import('@/components/LuckysheetComponent'), {
-  ssr: false,
-})
+function SheetsPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(true)
+  const [sidebarSize, setSidebarSize] = useState<number | null>(null)
+  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false)
 
-export default function SheetPage() {
-  const { user } = useAuth()
-  const { team, currentSeason } = useAppData()
-  const { data: sheets = [], isLoading: sheetsLoading, refetch: refetchSheets } = useLuckysheetList()
-  const { mutate: saveLuckysheet } = useLuckysheetSave()
-
-  const [selectedSheet, setSelectedSheet] = useState<LuckysheetPage | null>(null)
-  const [sheetTitle, setSheetTitle] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
-
-  // Select first sheet by default when sheets load
+  // Load sidebar size from localStorage on mount
   useEffect(() => {
-    if (sheets.length > 0 && !selectedSheet) {
-      setSelectedSheet(sheets[0])
-      setSheetTitle(sheets[0].title)
+    const savedSize = localStorage.getItem('sheets-sidebar-size')
+    if (savedSize) {
+      const size = parseInt(savedSize, 10)
+      if (size >= 15 && size <= 40) {
+        setSidebarSize(size)
+      } else {
+        setSidebarSize(25)
+      }
+    } else {
+      setSidebarSize(25)
     }
-  }, [sheets, selectedSheet])
+  }, [])
 
-  // // Manual save function
-  // const handleManualSave = useCallback(() => {
-  //   if (!selectedSheet || !team || !currentSeason || !user) {
-  //     console.error('Cannot save: missing required data', { selectedSheet, team, currentSeason, user })
-  //     return
-  //   }
+  const {
+    folders,
+    sheets,
+    currentSheet,
+    currentFolder,
+    isLoading,
+    error,
+    createFolder,
+    createSheet,
+    updateSheet,
+    updateFolder,
+    deleteSheet,
+    deleteFolder,
+    moveSheetToFolder,
+    reorderSheet,
+    reorderSheetToPosition,
+    reorderFolder,
+    setCurrentSheet,
+    setCurrentFolder
+  } = useSheetsContext()
 
-  //   // Get current workbook data from Luckysheet
-  //   const workbookData = (window as any).luckysheet?.getAllSheets?.()
-
-  //   if (!workbookData) {
-  //     console.error('Cannot get workbook data from Luckysheet')
-  //     return
-  //   }
-
-  //   console.log('Manual save triggered', {
-  //     pageId: selectedSheet.id,
-  //     title: sheetTitle,
-  //     workbookSheetCount: workbookData.length
-  //   })
-
-  //   setIsSaving(true)
-  //   saveLuckysheet(
-  //     {
-  //       pageId: selectedSheet.id,
-  //       teamId: team.id,
-  //       seasonId: currentSeason.id,
-  //       workbookData,
-  //       userId: user.id,
-  //       metadata: { title: sheetTitle },
-  //     },
-  //     {
-  //       onSuccess: () => {
-  //         console.log('✅ Save successful!')
-  //         setIsSaving(false)
-  //         setLastSaved(new Date())
-  //         // Don't refetch to avoid black screen
-  //       },
-  //       onError: (error) => {
-  //         console.error('❌ Save failed:', error)
-  //         setIsSaving(false)
-  //         alert(`Failed to save sheet: ${error.message}`)
-  //       },
-  //     }
-  //   )
-  // }, [selectedSheet, team, currentSeason, user, sheetTitle, saveLuckysheet, refetchSheets])
-
-  // Debounced save function (for auto-save)
-  const debouncedSave = useDebouncedCallback(
-    useCallback((workbookData: any, title: string) => {
-      if (!selectedSheet || !team || !currentSeason || !user) return
-
-      console.log('Auto-save triggered')
-      setIsSaving(true)
-      saveLuckysheet(
-        {
-          pageId: selectedSheet.id,
-          teamId: team.id,
-          seasonId: currentSeason.id,
-          workbookData,
-          userId: user.id,
-          metadata: { title },
-        },
-        {
-          onSuccess: () => {
-            console.log('✅ Auto-save successful!')
-            setIsSaving(false)
-            setLastSaved(new Date())
-            // Don't refetch to avoid black screen
-          },
-          onError: (error) => {
-            console.error('❌ Auto-save failed:', error)
-            setIsSaving(false)
-          },
+  // Handle folder selection from query parameter
+  useEffect(() => {
+    const folderId = searchParams.get('folder')
+    if (folderId && folders.length > 0) {
+      // Find the folder recursively
+      const findFolder = (folders: SheetFolder[]): SheetFolder | undefined => {
+        for (const folder of folders) {
+          if (folder.id === folderId) return folder
+          if (folder.children) {
+            const found = findFolder(folder.children)
+            if (found) return found
+          }
         }
-      )
-    }, [selectedSheet, team, currentSeason, user, saveLuckysheet, refetchSheets]),
-    3000 // 3 second debounce for auto-save
-  )
-
-  // Handle data changes from Luckysheet
-  const handleSheetChange = (workbookData: any) => {
-    debouncedSave(workbookData, sheetTitle)
-  }
-
-  // Handle title change
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTitle = e.target.value
-    setSheetTitle(newTitle)
-    if (selectedSheet) {
-      debouncedSave(selectedSheet.content?.data, newTitle)
-    }
-  }
-
-  // Create new sheet
-  const handleCreateSheet = async () => {
-    if (!team || !currentSeason || !user) return
-
-    try {
-      const { data: newPage, error } = await supabase
-        .from('notebook_pages')
-        .insert({
-          team_id: team.id,
-          season_id: currentSeason.id,
-          title: 'New Sheet',
-          page_type: 'luckysheet',
-          content: {
-            type: 'luckysheet',
-            data: null,
-          },
-          created_by: user.id,
-          updated_by: user.id,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Refetch sheets and select the new one
-      await refetchSheets()
-      setSelectedSheet(newPage as LuckysheetPage)
-      setSheetTitle(newPage.title)
-    } catch (error) {
-      console.error('Failed to create sheet:', error)
-    }
-  }
-
-  // Delete sheet
-  const handleDeleteSheet = async (sheetId: string) => {
-    if (!confirm('Are you sure you want to delete this sheet?')) return
-
-    try {
-      const { error } = await supabase
-        .from('notebook_pages')
-        .delete()
-        .eq('id', sheetId)
-
-      if (error) throw error
-
-      // If this was the selected sheet, clear selection
-      if (selectedSheet?.id === sheetId) {
-        setSelectedSheet(null)
-        setSheetTitle('')
+        return undefined
       }
 
-      await refetchSheets()
-    } catch (error) {
-      console.error('Failed to delete sheet:', error)
+      const folder = findFolder(folders)
+      if (folder && folder.id !== currentFolder?.id) {
+        setCurrentFolder(folder)
+        setCurrentSheet(undefined)
+      }
+    } else if (!folderId && currentFolder) {
+      // Clear folder selection if no query param
+      setCurrentFolder(undefined)
+    }
+  }, [searchParams, folders, currentFolder, setCurrentFolder, setCurrentSheet])
+
+
+  const handleCreateSheet = async (data: { title: string; folder_id?: string }) => {
+    const newSheet = await createSheet(data)
+    if (newSheet) {
+      // Set the current sheet immediately to avoid flickering
+      setCurrentSheet(newSheet)
+      // Then navigate to the new sheet URL
+      router.push(`/sheets/${newSheet.id}`)
+    }
+  }
+
+  const handleCreateFolder = async (data: { name: string; parent_folder_id?: string; color?: string }) => {
+    await createFolder(data)
+  }
+
+  const handleUpdateFolder = async (id: string, data: { name?: string; parent_folder_id?: string | null; color?: string }) => {
+    await updateFolder(id, data)
+  }
+
+  const handleDeleteSheet = async (id: string) => {
+    await deleteSheet(id)
+  }
+
+  const handleDeleteFolder = async (id: string) => {
+    await deleteFolder(id)
+  }
+
+  const handleMoveSheetToFolder = async (sheetId: string, folderId?: string) => {
+    await moveSheetToFolder(sheetId, folderId)
+  }
+
+  const handleUpdateSheetMetadata = async (id: string, data: { title?: string; is_pinned?: boolean }) => {
+    await updateSheet(id, data, true)
+  }
+
+  const handleSelectSheet = (sheet: SheetPage) => {
+    // Navigate to the selected sheet
+    router.push(`/sheets/${sheet.id}`)
+  }
+
+  const handleSelectFolder = (folder?: SheetFolder) => {
+    setCurrentFolder(folder)
+    setCurrentSheet(undefined)
+    // Navigate to update the URL with the folder parameter
+    if (folder) {
+      router.push(`/sheets?folder=${folder.id}`)
+    } else {
+      router.push('/sheets')
+    }
+  }
+
+  const handlePanelResize = (sizes: number[]) => {
+    const newSize = sizes[0]
+    if (newSize !== undefined) {
+      setSidebarSize(newSize)
+      localStorage.setItem('sheets-sidebar-size', newSize.toString())
     }
   }
 
   // Action buttons for the top navigation
   const actionButtons = (
-    <div className="flex items-center gap-2">
-      {/* {selectedSheet && (
+    <>
+      {/* Mobile/Medium sidebar toggle */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="xl:hidden"
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+      >
+        {isMobileSidebarOpen ? (
+          <>
+            <X className="w-4 h-4 mr-2" />
+            Close
+          </>
+        ) : (
+          <>
+            <FolderOpen className="w-4 h-4 mr-2" />
+            View sheets
+          </>
+        )}
+      </Button>
+
+      {/* Mobile/Medium dropdown menu */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="xl:hidden">
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setIsFolderDialogOpen(true)}>
+            <Folder className="w-4 h-4 mr-2" />
+            Add Folder
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            New Sheet
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Desktop action buttons - hidden on mobile and medium screens */}
+      <div className="hidden xl:flex items-center gap-2">
         <Button
           variant="default"
           size="sm"
-          onClick={handleManualSave}
-          disabled={isSaving}
+          className="btn-accent"
+          onClick={() => setIsFolderDialogOpen(true)}
         >
-          <Save className="w-4 h-4 mr-2" />
-          {isSaving ? 'Saving...' : 'Save'}
+          <Folder className="w-4 h-4 mr-2" />
+          New Folder
         </Button>
-      )} */}
-      <Button variant="default" size="sm" className="btn-accent" onClick={handleCreateSheet}>
-        <Plus className="w-4 h-4 mr-2" />
-        New Sheet
-      </Button>
-    </div>
+        <Button
+          variant="default"
+          size="sm"
+          className="btn-accent"
+          onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Sheet
+        </Button>
+      </div>
+
+      {/* Shared folder dialog for both mobile and desktop */}
+      <SheetFolderDialog
+        folders={folders}
+        onCreateFolder={handleCreateFolder}
+        open={isFolderDialogOpen}
+        onOpenChange={setIsFolderDialogOpen}
+        trigger={<span className="hidden" />}
+      />
+    </>
   )
+
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout pageTitle="Sheets" pageIcon={Table} actions={actionButtons} disableContentScroll={true}>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading sheets...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    )
+  }
+
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout pageTitle="Sheets" pageIcon={Table} actions={actionButtons} disableContentScroll={true}>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-destructive mb-2">Error loading sheets</p>
+              <p className="text-muted-foreground text-sm">{error}</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    )
+  }
 
   return (
     <ProtectedRoute>
       <DashboardLayout pageTitle="Sheets" pageIcon={Table} actions={actionButtons} disableContentScroll={true}>
-        <div className="flex h-full">
-          {/* Sidebar */}
-          <div className="w-64 border-r border-border bg-card flex flex-col">
-            <div className="p-4 border-b border-border">
-              <h3 className="font-semibold text-sm text-muted-foreground">Saved Sheets</h3>
+        {/* Mobile/Medium Sidebar Overlay */}
+        {isMobileSidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 z-40 xl:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+
+            {/* Sidebar */}
+            <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-background z-50 xl:hidden">
+              <SheetsSidebar
+                folders={folders}
+                sheets={sheets}
+                currentSheet={currentSheet}
+                currentFolder={currentFolder}
+                onCreateSheet={handleCreateSheet}
+                onSelectSheet={(sheet) => {
+                  handleSelectSheet(sheet)
+                  setIsMobileSidebarOpen(false) // Close sidebar when sheet is selected
+                }}
+                onSelectFolder={handleSelectFolder}
+                onDeleteSheet={handleDeleteSheet}
+                onDeleteFolder={handleDeleteFolder}
+                onUpdateSheet={handleUpdateSheetMetadata}
+                onUpdateFolder={handleUpdateFolder}
+                onMoveSheetToFolder={handleMoveSheetToFolder}
+                onReorderSheet={reorderSheet}
+                onReorderSheetToPosition={reorderSheetToPosition}
+                onReorderFolder={reorderFolder}
+              />
             </div>
-            <div className="flex-1 overflow-y-auto">
-              {sheetsLoading ? (
-                <div className="p-4 text-sm text-muted-foreground">Loading sheets...</div>
-              ) : sheets.length === 0 ? (
-                <div className="p-4">
-                  <p className="text-sm text-muted-foreground mb-4">No sheets yet</p>
-                  <Button variant="outline" size="sm" onClick={handleCreateSheet} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Sheet
-                  </Button>
-                </div>
-              ) : (
-                <div className="p-2">
-                  {sheets.map((sheet) => (
-                    <div
-                      key={sheet.id}
-                      className={cn(
-                        'group flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-accent mb-1',
-                        selectedSheet?.id === sheet.id && 'bg-accent'
-                      )}
-                      onClick={() => {
-                        setSelectedSheet(sheet)
-                        setSheetTitle(sheet.title)
-                      }}
-                    >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FileSpreadsheet className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-                        <span className="text-sm truncate">{sheet.title}</span>
+          </>
+        )}
+
+        {/* Desktop Layout with Resizable Panels - Only show on large screens when size is loaded */}
+        <div className="h-full hidden xl:flex">
+          {sidebarSize !== null && (
+            <ResizablePanelGroup
+              direction="horizontal"
+              className="h-full w-full"
+              onLayout={handlePanelResize}
+            >
+              <ResizablePanel defaultSize={sidebarSize} minSize={15} maxSize={40}>
+                <SheetsSidebar
+                  folders={folders}
+                  sheets={sheets}
+                  currentSheet={currentSheet}
+                  currentFolder={currentFolder}
+                  onCreateSheet={handleCreateSheet}
+                  onSelectSheet={handleSelectSheet}
+                  onSelectFolder={handleSelectFolder}
+                  onDeleteSheet={handleDeleteSheet}
+                  onDeleteFolder={handleDeleteFolder}
+                  onUpdateSheet={handleUpdateSheetMetadata}
+                  onUpdateFolder={handleUpdateFolder}
+                  onMoveSheetToFolder={handleMoveSheetToFolder}
+                  onReorderSheet={reorderSheet}
+                  onReorderSheetToPosition={reorderSheetToPosition}
+                  onReorderFolder={reorderFolder}
+                />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={100 - sidebarSize} className="overflow-hidden">
+                {currentFolder ? (
+                  <div className="flex items-center justify-center h-full p-4">
+                    <div className="text-center max-w-md">
+                      <div
+                        className="w-16 h-16 rounded-lg mx-auto mb-4 flex items-center justify-center"
+                        style={{ backgroundColor: currentFolder.color || '#6366f1' }}
+                      >
+                        <FolderOpen className="w-8 h-8 text-white" />
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                          >
-                            <MoreVertical className="w-3 h-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteSheet(sheet.id)
-                            }}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <h3 className="text-lg font-medium mb-2">{currentFolder.name}</h3>
+                      <p className="text-muted-foreground text-sm md:text-base mb-4">
+                        Select a sheet from this folder or create a new one.
+                      </p>
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          onClick={() => handleCreateSheet({
+                            title: 'Untitled Sheet',
+                            folder_id: currentFolder.id
+                          })}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          New Sheet in Folder
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Main content */}
-          <div className="flex-1 flex flex-col">
-            {selectedSheet ? (
-              <>
-                {/* Header */}
-                <div className="p-4 border-b border-border flex items-center gap-4">
-                  <Input
-                    value={sheetTitle}
-                    onChange={handleTitleChange}
-                    className="max-w-md"
-                    placeholder="Sheet title"
-                  />
-                  <div className="text-sm text-muted-foreground">
-                    {isSaving ? 'Saving...' : lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : 'Ready'}
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col h-full p-4">
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <div className="text-center max-w-md mb-6">
+                        <Table className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">Welcome to Team Sheets</h3>
+                        <p className="text-muted-foreground text-sm md:text-base mb-4">
+                          Organize your team&apos;s data with spreadsheets and folders. Select a sheet from the sidebar or create a new one to get started.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button className="btn-accent" onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          {sheets.length === 0 ? 'Create First Sheet' : 'Create New Sheet'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          )}
+        </div>
 
-                {/* Spreadsheet */}
-                <div className="flex-1 relative">
-                  <LuckysheetComponent
-                    containerId={`luckysheet-${selectedSheet.id}`}
-                    height="100%"
-                    data={selectedSheet.content?.data}
-                    onChange={handleSheetChange}
-                  />
+        {/* Mobile/Medium fallback - show content without resizable */}
+        <div className="h-full xl:hidden">
+          {currentFolder ? (
+            <div className="flex items-center justify-center min-h-full p-4">
+              <div className="text-center max-w-md">
+                <div
+                  className="w-16 h-16 rounded-lg mx-auto mb-4 flex items-center justify-center"
+                  style={{ backgroundColor: currentFolder.color || '#6366f1' }}
+                >
+                  <FolderOpen className="w-8 h-8 text-white" />
                 </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center p-8">
-                <div className="text-center max-w-md">
-                  <FileSpreadsheet className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No sheet selected</h3>
-                  <p className="text-muted-foreground text-sm mb-4">
-                    {sheets.length === 0
-                      ? 'Create your first sheet to get started with spreadsheets.'
-                      : 'Select a sheet from the sidebar or create a new one.'}
-                  </p>
-                  <Button onClick={handleCreateSheet} className="btn-accent">
+                <h3 className="text-lg font-medium mb-2">{currentFolder.name}</h3>
+                <p className="text-muted-foreground text-sm md:text-base mb-4">
+                  Select a sheet from this folder or create a new one.
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    onClick={() => handleCreateSheet({
+                      title: 'Untitled Sheet',
+                      folder_id: currentFolder.id
+                    })}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
-                    Create New Sheet
+                    New Sheet in Folder
                   </Button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center min-h-full p-4">
+              <div className="text-center max-w-md">
+                <Table className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Welcome to Team Sheets</h3>
+                <p className="text-muted-foreground text-sm md:text-base mb-4">
+                  Organize your team&apos;s data with spreadsheets and folders. Select a sheet from the sidebar or create a new one to get started.
+                </p>
+                <div className="flex flex-col gap-2 justify-center">
+                  <Button className="btn-accent" onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {sheets.length === 0 ? 'Create First Sheet' : 'Create New Sheet'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  )
+}
+
+export default function SheetsPage() {
+  return (
+    <Suspense fallback={
+      <ProtectedRoute>
+        <DashboardLayout pageTitle="Sheets" pageIcon={Table} disableContentScroll={true}>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading sheets...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    }>
+      <SheetsPageContent />
+    </Suspense>
   )
 }

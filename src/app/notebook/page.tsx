@@ -6,9 +6,8 @@ import { NotebookSidebar } from '@/components/notebook/NotebookSidebar'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { useNotebookContext } from '@/components/NotebookProvider'
-import { SheetEditor } from '@/components/notebook/SheetEditor'
 import type { NotebookPage, NotebookFolder } from '@/types/notebook'
-import { BookOpen, Plus, X, FolderOpen, MoreVertical, Folder, FileText, Table } from 'lucide-react'
+import { BookOpen, Plus, X, FolderOpen, MoreVertical, Folder, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FolderDialog } from '@/components/notebook/FolderDialog'
 import {
@@ -29,9 +28,6 @@ function NotebookPageContent() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(true)
   const [sidebarSize, setSidebarSize] = useState<number | null>(null)
   const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false)
-  const [isSheetEditorOpen, setIsSheetEditorOpen] = useState(false)
-  const [showEmbeddedSheet, setShowEmbeddedSheet] = useState(false)
-  const [currentSheet, setCurrentSheet] = useState<{ id: string; title: string } | null>(null)
 
   // Load sidebar size from localStorage on mount
   useEffect(() => {
@@ -152,15 +148,6 @@ function NotebookPageContent() {
     }
   }
 
-  const handleCreateSheet = async () => {
-    // Create a new page for the sheet
-    const newPage = await createPage({ title: 'New Sheet' })
-    if (newPage) {
-      setCurrentSheet({ id: newPage.id, title: newPage.title })
-      setShowEmbeddedSheet(true)
-    }
-  }
-
   // Action buttons for the top navigation
   const actionButtons = (
     <>
@@ -200,10 +187,6 @@ function NotebookPageContent() {
             <FileText className="w-4 h-4 mr-2" />
             New Note
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleCreateSheet}>
-            <Table className="w-4 h-4 mr-2" />
-            New Sheet
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -227,15 +210,6 @@ function NotebookPageContent() {
           <Plus className="w-4 h-4 mr-2" />
           New Note
         </Button>
-        <Button
-          variant="default"
-          size="sm"
-          className="btn-accent"
-          onClick={() => setIsSheetEditorOpen(true)}
-        >
-          <Table className="w-4 h-4 mr-2" />
-          Add New Sheet
-        </Button>
       </div>
 
       {/* Shared folder dialog for both mobile and desktop */}
@@ -246,22 +220,6 @@ function NotebookPageContent() {
         onOpenChange={setIsFolderDialogOpen}
         trigger={<span className="hidden" />}
       />
-
-      {/* Sheet editor modal */}
-      {currentSheet && (
-        <SheetEditor
-          open={isSheetEditorOpen}
-          onOpenChange={setIsSheetEditorOpen}
-          page={pages.find(p => p.id === currentSheet.id)}
-          onUpdatePage={async (id, data) => {
-            await updatePage(id, {
-              title: data.title,
-              content: data.content,
-              content_text: data.content_text
-            }, true)
-          }}
-        />
-      )}
     </>
   )
 
@@ -384,39 +342,21 @@ function NotebookPageContent() {
                   </div>
                 ) : (
                   <div className="flex flex-col h-full p-4">
-                    {showEmbeddedSheet && currentSheet ? (
-                      <SheetEditor
-                        embedded={true}
-                        page={pages.find(p => p.id === currentSheet.id)}
-                        onUpdatePage={async (id, data) => {
-                          await updatePage(id, {
-                            title: data.title,
-                            content: data.content,
-                            content_text: data.content_text
-                          }, true)
-                        }}
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center flex-1">
-                        <div className="text-center max-w-md mb-6">
-                          <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                          <h3 className="text-lg font-medium mb-2">Welcome to Team Notebook</h3>
-                          <p className="text-muted-foreground text-sm md:text-base mb-4">
-                            Organize your team&apos;s knowledge with notes and folders. Select a note from the sidebar or create a new one to get started.
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button className="btn-accent" onClick={() => handleCreatePage({ title: 'Untitled' })}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            {pages.length === 0 ? 'Create First Note' : 'Create New Note'}
-                          </Button>
-                          <Button variant="outline" onClick={handleCreateSheet}>
-                            <Table className="w-4 h-4 mr-2" />
-                            Add New Sheet
-                          </Button>
-                        </div>
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <div className="text-center max-w-md mb-6">
+                        <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">Welcome to Team Notebook</h3>
+                        <p className="text-muted-foreground text-sm md:text-base mb-4">
+                          Organize your team&apos;s knowledge with notes and folders. Select a note from the sidebar or create a new one to get started.
+                        </p>
                       </div>
-                    )}
+                      <div className="flex gap-2">
+                        <Button className="btn-accent" onClick={() => handleCreatePage({ title: 'Untitled' })}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          {pages.length === 0 ? 'Create First Note' : 'Create New Note'}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </ResizablePanel>
@@ -452,18 +392,6 @@ function NotebookPageContent() {
                 </div>
               </div>
             </div>
-          ) : showEmbeddedSheet && currentSheet ? (
-            <SheetEditor
-              embedded={true}
-              page={pages.find(p => p.id === currentSheet.id)}
-              onUpdatePage={async (id, data) => {
-                await updatePage(id, {
-                  title: data.title,
-                  content: data.content,
-                  content_text: data.content_text
-                }, true)
-              }}
-            />
           ) : (
             <div className="flex items-center justify-center min-h-full p-4">
               <div className="text-center max-w-md">
@@ -476,10 +404,6 @@ function NotebookPageContent() {
                   <Button className="btn-accent" onClick={() => handleCreatePage({ title: 'Untitled' })}>
                     <Plus className="w-4 h-4 mr-2" />
                     {pages.length === 0 ? 'Create First Note' : 'Create New Note'}
-                  </Button>
-                  <Button variant="outline" onClick={handleCreateSheet}>
-                    <Table className="w-4 h-4 mr-2" />
-                    Add New Sheet
                   </Button>
                 </div>
               </div>

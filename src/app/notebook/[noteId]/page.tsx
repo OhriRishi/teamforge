@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { BlockNoteEditor } from '@/components/notebook/BlockNoteEditor'
-import { SheetEditor } from '@/components/notebook/SheetEditor'
 import { NotebookSidebar } from '@/components/notebook/NotebookSidebar'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -348,19 +347,10 @@ export default function NotePage() {
                   </div>
                 </div>
               ) : currentPage ? (
-                // If this page contains a sheet, render the SheetEditor (full area). Otherwise render the BlockNoteEditor.
-                (currentPage.content && typeof currentPage.content === 'object' && (currentPage.content as any).type === 'sheet') ? (
-                  <SheetEditor
-                    embedded={true}
-                    page={currentPage}
-                    onUpdatePage={handleUpdatePage}
-                  />
-                ) : (
-                  <BlockNoteEditor
-                    page={currentPage}
-                    onUpdatePage={handleUpdatePage}
-                  />
-                )
+                <BlockNoteEditor
+                  page={currentPage}
+                  onUpdatePage={handleUpdatePage}
+                />
               ) : (
                 <div className="flex items-center justify-center h-full p-4">
                   <div className="text-center max-w-md">

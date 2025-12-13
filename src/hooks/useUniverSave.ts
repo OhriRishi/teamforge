@@ -1,36 +1,37 @@
 import { useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
-interface SaveLuckysheetParams {
+interface SaveUniverParams {
     pageId: string
     teamId: string
     seasonId: string
-    workbookData: any // Luckysheet workbook data from getAllSheets()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    workbookData: any // Univer workbook snapshot from workbook.save()
     userId?: string
     metadata?: {
         title?: string
     }
 }
 
-interface SaveLuckysheetResult {
+interface SaveUniverResult {
     success: boolean
     timestamp: Date
 }
 
 /**
- * Save Luckysheet workbook content to notebook_pages table
- * Stores the complete workbook as JSON in the content field
+ * Save Univer workbook content to notebook_pages table
+ * Stores the complete workbook snapshot as JSON in the content field
  */
-async function saveLuckysheetContent(params: SaveLuckysheetParams): Promise<SaveLuckysheetResult> {
-    const { pageId, teamId, seasonId, workbookData, userId, metadata } = params
+async function saveUniverContent(params: SaveUniverParams): Promise<SaveUniverResult> {
+    const { pageId, workbookData, userId, metadata } = params
 
     try {
         // Prepare update data
         const updateData: Record<string, unknown> = {
-            content: { type: 'luckysheet', data: workbookData },
-            content_text: `Luckysheet with ${workbookData?.length || 0} sheet(s)`,
+            content: { type: 'sheet', data: workbookData },
+            content_text: `Univer sheet with ${Object.keys(workbookData?.sheets || {}).length} sheet(s)`,
             updated_at: new Date().toISOString(),
-            page_type: 'luckysheet',
+            page_type: 'sheet',
         }
 
         // Add metadata fields if provided
@@ -43,7 +44,7 @@ async function saveLuckysheetContent(params: SaveLuckysheetParams): Promise<Save
             .eq('id', pageId)
 
         if (dbError) {
-            console.error('[useLuckysheetSave] Database update error:', dbError)
+            console.error('[useUniverSave] Database update error:', dbError)
             throw new Error(`Failed to update database: ${dbError.message}`)
         }
 
@@ -52,13 +53,13 @@ async function saveLuckysheetContent(params: SaveLuckysheetParams): Promise<Save
             timestamp: new Date()
         }
     } catch (error) {
-        console.error('[useLuckysheetSave] Error saving Luckysheet:', error)
+        console.error('[useUniverSave] Error saving Univer sheet:', error)
         throw error // Let TanStack Query handle retries
     }
 }
 
 /**
- * Hook to save Luckysheet workbook content with automatic retry
+ * Hook to save Univer workbook content with automatic retry
  *
  * Features:
  * - Automatic retry on failure (3 attempts with exponential backoff)
@@ -68,20 +69,20 @@ async function saveLuckysheetContent(params: SaveLuckysheetParams): Promise<Save
  *
  * Usage:
  * ```ts
- * const { mutate: saveLuckysheet, isPending } = useLuckysheetSave()
+ * const { mutate: saveUniver, isPending } = useUniverSave()
  *
- * saveLuckysheet({
+ * saveUniver({
  *   pageId: 'page-123',
  *   teamId: 'team-456',
  *   seasonId: 'season-789',
- *   workbookData: luckysheet.getAllSheets(),
+ *   workbookData: workbook.save(),
  *   metadata: { title: 'My Sheet' }
  * })
  * ```
  */
-export function useLuckysheetSave() {
+export function useUniverSave() {
     return useMutation({
-        mutationFn: saveLuckysheetContent,
+        mutationFn: saveUniverContent,
         retry: 3,
         retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     })

@@ -3,39 +3,40 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import { useAppData } from '@/components/AppDataProvider'
 
-export interface LuckysheetPage {
+export interface UniverPage {
     id: string
     title: string
     created_at: string
     updated_at: string
     content?: {
         type: string
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data: any
     }
 }
 
 /**
- * Fetch all Luckysheet pages for the current team and season
+ * Fetch all Univer sheet pages for the current team and season
  */
-async function fetchLuckysheetPages(teamId: string, seasonId: string): Promise<LuckysheetPage[]> {
+async function fetchUniverPages(teamId: string, seasonId: string): Promise<UniverPage[]> {
     const { data, error } = await supabase
         .from('notebook_pages')
         .select('id, title, created_at, updated_at, content')
         .eq('team_id', teamId)
         .eq('season_id', seasonId)
-        .eq('page_type', 'luckysheet')
+        .eq('page_type', 'sheet')
         .order('updated_at', { ascending: false })
 
     if (error) {
-        console.error('[useLuckysheetList] Error fetching pages:', error)
-        throw new Error(`Failed to fetch Luckysheet pages: ${error.message}`)
+        console.error('[useUniverList] Error fetching pages:', error)
+        throw new Error(`Failed to fetch Univer pages: ${error.message}`)
     }
 
     return data || []
 }
 
 /**
- * Hook to fetch all Luckysheet pages for the current team and season
+ * Hook to fetch all Univer sheet pages for the current team and season
  *
  * Features:
  * - Automatically refetches on window focus
@@ -44,16 +45,16 @@ async function fetchLuckysheetPages(teamId: string, seasonId: string): Promise<L
  *
  * Usage:
  * ```ts
- * const { data: sheets, isLoading, error } = useLuckysheetList()
+ * const { data: sheets, isLoading, error } = useUniverList()
  * ```
  */
-export function useLuckysheetList() {
+export function useUniverList() {
     const { user } = useAuth()
     const { team, currentSeason } = useAppData()
 
     return useQuery({
-        queryKey: ['luckysheet-pages', team?.id, currentSeason?.id],
-        queryFn: () => fetchLuckysheetPages(team!.id, currentSeason!.id),
+        queryKey: ['univer-pages', team?.id, currentSeason?.id],
+        queryFn: () => fetchUniverPages(team!.id, currentSeason!.id),
         enabled: !!team && !!currentSeason && !!user,
         staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     })
