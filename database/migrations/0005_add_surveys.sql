@@ -799,9 +799,68 @@ COMMENT ON FUNCTION get_surveys_with_question_count(UUID, UUID) IS 'Returns surv
 -- 9. RECORD VERSION
 -- =============================================
 
+-- =============================================
+-- 10. SHEETS SUPPORT (page_type and folder_type)
+-- =============================================
+
+-- Add page_type column to notebook_pages to differentiate between notes and sheets
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'notebook_pages'
+    AND column_name = 'page_type'
+  ) THEN
+    ALTER TABLE public.notebook_pages
+    ADD COLUMN page_type TEXT NOT NULL DEFAULT 'note';
+
+    -- Add check constraint
+    ALTER TABLE public.notebook_pages
+    ADD CONSTRAINT notebook_pages_page_type_check
+    CHECK (page_type IN ('note', 'sheet'));
+
+    -- Add index for faster filtering by page type
+    CREATE INDEX idx_notebook_pages_page_type ON public.notebook_pages(page_type);
+
+    -- Add comment for documentation
+    COMMENT ON COLUMN public.notebook_pages.page_type IS 'Type of page: note (default) or sheet (spreadsheet)';
+  END IF;
+END $$;
+
+-- Add folder_type column to notebook_folders to differentiate between note and sheet folders
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+    AND table_name = 'notebook_folders'
+    AND column_name = 'folder_type'
+  ) THEN
+    ALTER TABLE public.notebook_folders
+    ADD COLUMN folder_type TEXT NOT NULL DEFAULT 'note';
+
+    -- Add check constraint
+    ALTER TABLE public.notebook_folders
+    ADD CONSTRAINT notebook_folders_folder_type_check
+    CHECK (folder_type IN ('note', 'sheet'));
+
+    -- Create index for efficient filtering by folder_type
+    CREATE INDEX idx_notebook_folders_folder_type
+    ON public.notebook_folders(team_id, season_id, folder_type);
+
+    -- Comment for documentation
+    COMMENT ON COLUMN public.notebook_folders.folder_type IS 'Type of folder: note (default) or sheet - keeps folders separate between features';
+  END IF;
+END $$;
+
+-- =============================================
+-- 11. RECORD VERSION
+-- =============================================
+
 -- Record this version in schema_versions
 INSERT INTO public.schema_versions (version, release_notes_path, description)
-VALUES ('2.0.0', '/releases/v2.0.0.md', 'Add comprehensive Surveys feature with templates, ratings, and visibility controls')
+VALUES ('2.0.0', '/releases/v2.0.0.md', 'Add Surveys feature and Sheets support')
 ON CONFLICT (version) DO NOTHING;
 
 -- ==============================================
@@ -867,6 +926,15 @@ DROP TABLE IF EXISTS public.survey_responses;
 DROP TABLE IF EXISTS public.survey_questions;
 DROP TABLE IF EXISTS public.surveys;
 DROP TABLE IF EXISTS public.survey_templates;
+
+-- Remove sheets columns
+ALTER TABLE public.notebook_pages DROP CONSTRAINT IF EXISTS notebook_pages_page_type_check;
+DROP INDEX IF EXISTS idx_notebook_pages_page_type;
+ALTER TABLE public.notebook_pages DROP COLUMN IF EXISTS page_type;
+
+ALTER TABLE public.notebook_folders DROP CONSTRAINT IF EXISTS notebook_folders_folder_type_check;
+DROP INDEX IF EXISTS idx_notebook_folders_folder_type;
+ALTER TABLE public.notebook_folders DROP COLUMN IF EXISTS folder_type;
 
 -- Remove version record
 DELETE FROM public.schema_versions WHERE version = '2.0.0';
