@@ -5,7 +5,7 @@ import { useAccentColorContext } from '@/components/AccentColorProvider'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
-  GripVertical, Trash2, Plus, Eye, X,
+  Trash2, Plus, Eye, X,
   Star, Palette, Undo, Redo, MoreVertical, Copy,
   Image as ImageIcon, Type as TypeIcon, SplitSquareVertical,
   CheckSquare, Circle, AlignLeft, AlignJustify, FileInput, Video,
@@ -254,7 +254,7 @@ export default function SurveyBuilder({ onClose }: { onClose?: () => void }) {
                     if (q.type === 'title') {
                       return (
                         <Draggable key={q.id} draggableId={q.id} index={qi}>
-                          {(prov, snapshot) => (
+                          {(prov, _snapshot) => (
                             <div
                               ref={prov.innerRef}
                               {...prov.draggableProps}
@@ -302,7 +302,7 @@ export default function SurveyBuilder({ onClose }: { onClose?: () => void }) {
                     if (q.type === 'section') {
                       return (
                         <Draggable key={q.id} draggableId={q.id} index={qi}>
-                          {(prov, snapshot) => (
+                          {(prov, _snapshot) => (
                             <div
                               ref={prov.innerRef}
                               {...prov.draggableProps}
@@ -352,7 +352,7 @@ export default function SurveyBuilder({ onClose }: { onClose?: () => void }) {
                     // Standard Question Block
                     return (
                       <Draggable key={q.id} draggableId={q.id} index={qi}>
-                        {(prov, snapshot) => (
+                        {(prov, _snapshot) => (
                           <div
                             ref={prov.innerRef}
                             {...prov.draggableProps}
@@ -448,7 +448,7 @@ export default function SurveyBuilder({ onClose }: { onClose?: () => void }) {
                                         onClick={() => addOption(q.id)}
                                         className="text-sm text-gray-500 hover:text-gray-800 font-normal py-1"
                                       >
-                                        Add option <span className="text-blue-600 font-medium hover:text-blue-700 ml-1">or add "Other"</span>
+                                        Add option <span className="text-blue-600 font-medium hover:text-blue-700 ml-1">or add &quot;Other&quot;</span>
                                       </button>
                                     </div>
                                   </div>
@@ -528,7 +528,6 @@ export default function SurveyBuilder({ onClose }: { onClose?: () => void }) {
         <div
           className="fixed top-1/2 -translate-y-1/2 flex flex-col bg-white shadow-md rounded-lg border border-gray-200 py-2 z-50 transition-all duration-300"
           style={{
-            left: 'calc(50% + 385px + 16px + 8rem)', // Center + half width of container + gap + sidebar offset correction
             left: 'calc(50vw + 8rem + 385px + 16px)'
           }}
         >

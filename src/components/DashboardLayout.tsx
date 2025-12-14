@@ -145,7 +145,8 @@ function DashboardLayoutContent({
                 )}
               </div>
             </div>
-          </SidebarHeader>
+          </div>
+        </SidebarHeader>
 
           <SidebarContent className="overflow-y-auto">
             {/* Navigation */}

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function MigrateSurveysPage() {
     const [databaseUrl, setDatabaseUrl] = useState('')
     const [loading, setLoading] = useState(false)
-    const [result, setResult] = useState<any>(null)
+    const [result, setResult] = useState<{ message?: string; results?: Array<{ migration: string; status: string; error?: string }> } | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     const handleMigrate = async () => {
@@ -94,7 +94,7 @@ export default function MigrateSurveysPage() {
                                 </p>
                                 {result.results && (
                                     <div className="space-y-1">
-                                        {result.results.map((r: any, i: number) => (
+                                        {result.results.map((r, i) => (
                                             <div key={i} className="text-xs">
                                                 <span className="font-mono">{r.migration}</span>:{' '}
                                                 <span className={r.status === 'success' ? 'text-green-600' : 'text-red-600'}>
@@ -113,9 +113,9 @@ export default function MigrateSurveysPage() {
                             <ol className="text-sm space-y-1 list-decimal list-inside">
                                 <li>Go to your Supabase project dashboard</li>
                                 <li>Navigate to Settings → Database</li>
-                                <li>Find "Connection string" and select "URI"</li>
+                                <li>Find &quot;Connection string&quot; and select &quot;URI&quot;</li>
                                 <li>Copy the connection string</li>
-                                <li>Paste it above and click "Run Survey Migration"</li>
+                                <li>Paste it above and click &quot;Run Survey Migration&quot;</li>
                             </ol>
                         </div>
                     </CardContent>
