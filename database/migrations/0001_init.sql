@@ -583,10 +583,12 @@ CREATE TABLE "public"."notebook_folders" (
     "name" "text" NOT NULL,
     "color" "text" DEFAULT '#6366f1'::"text",
     "sort_order" integer DEFAULT 0,
+    "folder_type" "text" DEFAULT 'note'::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "created_by" "uuid" NOT NULL,
-    "updated_by" "uuid" NOT NULL
+    "updated_by" "uuid" NOT NULL,
+    CONSTRAINT notebook_folders_folder_type_check CHECK (folder_type IN ('note', 'sheet'))
 );
 
 

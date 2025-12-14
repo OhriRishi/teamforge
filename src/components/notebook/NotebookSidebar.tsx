@@ -101,8 +101,8 @@ export function NotebookSidebar({
   // Filter pages based on search and sort by sort_order
   const filteredPages = pages
     .filter(page =>
-      page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (page.content_text && page.content_text.toLowerCase().includes(searchQuery.toLowerCase()))
+      (page.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (page.content_text || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
 

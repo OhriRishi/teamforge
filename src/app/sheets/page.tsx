@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { NotebookSidebar } from '@/components/notebook/NotebookSidebar'
+import { SheetsSidebar } from '@/components/sheets/SheetsSidebar'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { useNotebookContext } from '@/components/NotebookProvider'
-import type { NotebookPage, NotebookFolder } from '@/types/notebook'
-import { BookOpen, Plus, X, FolderOpen, MoreVertical, Folder, FileText } from 'lucide-react'
+import { useSheetsContext } from '@/components/SheetsProvider'
+import type { SheetPage, SheetFolder } from '@/types/sheets'
+import { Table, Plus, X, FolderOpen, MoreVertical, Folder, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FolderDialog } from '@/components/notebook/FolderDialog'
+import { SheetFolderDialog } from '@/components/sheets/SheetFolderDialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,7 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 
-function NotebookPageContent() {
+function SheetsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(true)
@@ -31,7 +31,7 @@ function NotebookPageContent() {
 
   // Load sidebar size from localStorage on mount
   useEffect(() => {
-    const savedSize = localStorage.getItem('notebook-sidebar-size')
+    const savedSize = localStorage.getItem('sheets-sidebar-size')
     if (savedSize) {
       const size = parseInt(savedSize, 10)
       if (size >= 15 && size <= 40) {
@@ -46,29 +46,31 @@ function NotebookPageContent() {
 
   const {
     folders,
-    pages,
-    currentPage,
+    sheets,
+    currentSheet,
     currentFolder,
     isLoading,
     error,
     createFolder,
-    createPage,
-    updatePage,
+    createSheet,
+    updateSheet,
     updateFolder,
-    deletePage,
+    deleteSheet,
     deleteFolder,
-    movePageToFolder,
-    reorderPages,
-    setCurrentPage,
+    moveSheetToFolder,
+    reorderSheet,
+    reorderSheetToPosition,
+    reorderFolder,
+    setCurrentSheet,
     setCurrentFolder
-  } = useNotebookContext()
+  } = useSheetsContext()
 
   // Handle folder selection from query parameter
   useEffect(() => {
     const folderId = searchParams.get('folder')
     if (folderId && folders.length > 0) {
       // Find the folder recursively
-      const findFolder = (folders: NotebookFolder[]): NotebookFolder | undefined => {
+      const findFolder = (folders: SheetFolder[]): SheetFolder | undefined => {
         for (const folder of folders) {
           if (folder.id === folderId) return folder
           if (folder.children) {
@@ -82,22 +84,22 @@ function NotebookPageContent() {
       const folder = findFolder(folders)
       if (folder && folder.id !== currentFolder?.id) {
         setCurrentFolder(folder)
-        setCurrentPage(undefined)
+        setCurrentSheet(undefined)
       }
     } else if (!folderId && currentFolder) {
       // Clear folder selection if no query param
       setCurrentFolder(undefined)
     }
-  }, [searchParams, folders, currentFolder, setCurrentFolder, setCurrentPage])
+  }, [searchParams, folders, currentFolder, setCurrentFolder, setCurrentSheet])
 
 
-  const handleCreatePage = async (data: { title: string; folder_id?: string }) => {
-    const newPage = await createPage(data)
-    if (newPage) {
-      // Set the current page immediately to avoid flickering
-      setCurrentPage(newPage)
-      // Then navigate to the new page URL
-      router.push(`/notebook/${newPage.id}`)
+  const handleCreateSheet = async (data: { title: string; folder_id?: string }) => {
+    const newSheet = await createSheet(data)
+    if (newSheet) {
+      // Set the current sheet immediately to avoid flickering
+      setCurrentSheet(newSheet)
+      // Then navigate to the new sheet URL
+      router.push(`/sheets/${newSheet.id}`)
     }
   }
 
@@ -109,39 +111,35 @@ function NotebookPageContent() {
     await updateFolder(id, data)
   }
 
-  const handleDeletePage = async (id: string) => {
-    await deletePage(id)
+  const handleDeleteSheet = async (id: string) => {
+    await deleteSheet(id)
   }
 
   const handleDeleteFolder = async (id: string) => {
     await deleteFolder(id)
   }
 
-  const handleMovePageToFolder = async (pageId: string, folderId?: string) => {
-    await movePageToFolder(pageId, folderId)
+  const handleMoveSheetToFolder = async (sheetId: string, folderId?: string) => {
+    await moveSheetToFolder(sheetId, folderId)
   }
 
-  const handleReorderPage = async (pageId: string, newPosition: number, folderId?: string) => {
-    await reorderPages(pageId, newPosition, folderId)
+  const handleUpdateSheetMetadata = async (id: string, data: { title?: string; is_pinned?: boolean }) => {
+    await updateSheet(id, data, true)
   }
 
-  const handleUpdatePageMetadata = async (id: string, data: { title?: string; is_pinned?: boolean }) => {
-    await updatePage(id, data, true)
+  const handleSelectSheet = (sheet: SheetPage) => {
+    // Navigate to the selected sheet
+    router.push(`/sheets/${sheet.id}`)
   }
 
-  const handleSelectPage = (page: NotebookPage) => {
-    // Navigate to the selected page
-    router.push(`/notebook/${page.id}`)
-  }
-
-  const handleSelectFolder = (folder?: NotebookFolder) => {
+  const handleSelectFolder = (folder?: SheetFolder) => {
     setCurrentFolder(folder)
-    setCurrentPage(undefined)
+    setCurrentSheet(undefined)
     // Navigate to update the URL with the folder parameter
     if (folder) {
-      router.push(`/notebook?folder=${folder.id}`)
+      router.push(`/sheets?folder=${folder.id}`)
     } else {
-      router.push('/notebook')
+      router.push('/sheets')
     }
   }
 
@@ -149,14 +147,14 @@ function NotebookPageContent() {
     const newSize = sizes[0]
     if (newSize !== undefined) {
       setSidebarSize(newSize)
-      localStorage.setItem('notebook-sidebar-size', newSize.toString())
+      localStorage.setItem('sheets-sidebar-size', newSize.toString())
     }
   }
 
   // Action buttons for the top navigation
   const actionButtons = (
     <>
-      {/* Mobile/Medium notebook sidebar toggle */}
+      {/* Mobile/Medium sidebar toggle */}
       <Button
         variant="outline"
         size="sm"
@@ -171,7 +169,7 @@ function NotebookPageContent() {
         ) : (
           <>
             <FolderOpen className="w-4 h-4 mr-2" />
-            View pages
+            View sheets
           </>
         )}
       </Button>
@@ -188,9 +186,9 @@ function NotebookPageContent() {
             <Folder className="w-4 h-4 mr-2" />
             Add Folder
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleCreatePage({ title: 'Untitled' })}>
-            <FileText className="w-4 h-4 mr-2" />
-            New Note
+          <DropdownMenuItem onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}>
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            New Sheet
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -210,15 +208,15 @@ function NotebookPageContent() {
           variant="default"
           size="sm"
           className="btn-accent"
-          onClick={() => handleCreatePage({ title: 'Untitled' })}
+          onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}
         >
           <Plus className="w-4 h-4 mr-2" />
-          New Note
+          New Sheet
         </Button>
       </div>
 
       {/* Shared folder dialog for both mobile and desktop */}
-      <FolderDialog
+      <SheetFolderDialog
         folders={folders}
         onCreateFolder={handleCreateFolder}
         open={isFolderDialogOpen}
@@ -231,11 +229,11 @@ function NotebookPageContent() {
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <DashboardLayout pageTitle="Notebooks" pageIcon={BookOpen} actions={actionButtons} disableContentScroll={true}>
+        <DashboardLayout pageTitle="Sheets" pageIcon={Table} actions={actionButtons} disableContentScroll={true}>
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading notebook...</p>
+              <p className="text-muted-foreground">Loading sheets...</p>
             </div>
           </div>
         </DashboardLayout>
@@ -246,10 +244,10 @@ function NotebookPageContent() {
   if (error) {
     return (
       <ProtectedRoute>
-        <DashboardLayout pageTitle="Notebooks" pageIcon={BookOpen} actions={actionButtons} disableContentScroll={true}>
+        <DashboardLayout pageTitle="Sheets" pageIcon={Table} actions={actionButtons} disableContentScroll={true}>
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <p className="text-destructive mb-2">Error loading notebook</p>
+              <p className="text-destructive mb-2">Error loading sheets</p>
               <p className="text-muted-foreground text-sm">{error}</p>
             </div>
           </div>
@@ -260,7 +258,7 @@ function NotebookPageContent() {
 
   return (
     <ProtectedRoute>
-      <DashboardLayout pageTitle="Notebooks" pageIcon={BookOpen} actions={actionButtons} disableContentScroll={true}>
+      <DashboardLayout pageTitle="Sheets" pageIcon={Table} actions={actionButtons} disableContentScroll={true}>
         {/* Mobile/Medium Sidebar Overlay */}
         {isMobileSidebarOpen && (
           <>
@@ -272,23 +270,25 @@ function NotebookPageContent() {
 
             {/* Sidebar */}
             <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-background z-50 xl:hidden">
-              <NotebookSidebar
+              <SheetsSidebar
                 folders={folders}
-                pages={pages}
-                currentPage={currentPage}
+                sheets={sheets}
+                currentSheet={currentSheet}
                 currentFolder={currentFolder}
-                onCreatePage={handleCreatePage}
-                onSelectPage={(page) => {
-                  handleSelectPage(page)
-                  setIsMobileSidebarOpen(false) // Close sidebar when page is selected
+                onCreateSheet={handleCreateSheet}
+                onSelectSheet={(sheet) => {
+                  handleSelectSheet(sheet)
+                  setIsMobileSidebarOpen(false) // Close sidebar when sheet is selected
                 }}
                 onSelectFolder={handleSelectFolder}
-                onDeletePage={handleDeletePage}
+                onDeleteSheet={handleDeleteSheet}
                 onDeleteFolder={handleDeleteFolder}
-                onUpdatePage={handleUpdatePageMetadata}
+                onUpdateSheet={handleUpdateSheetMetadata}
                 onUpdateFolder={handleUpdateFolder}
-                onMovePageToFolder={handleMovePageToFolder}
-                onReorderPage={handleReorderPage}
+                onMoveSheetToFolder={handleMoveSheetToFolder}
+                onReorderSheet={reorderSheet}
+                onReorderSheetToPosition={reorderSheetToPosition}
+                onReorderFolder={reorderFolder}
               />
             </div>
           </>
@@ -303,20 +303,22 @@ function NotebookPageContent() {
               onLayout={handlePanelResize}
             >
               <ResizablePanel defaultSize={sidebarSize} minSize={15} maxSize={40}>
-                <NotebookSidebar
+                <SheetsSidebar
                   folders={folders}
-                  pages={pages}
-                  currentPage={currentPage}
+                  sheets={sheets}
+                  currentSheet={currentSheet}
                   currentFolder={currentFolder}
-                  onCreatePage={handleCreatePage}
-                  onSelectPage={handleSelectPage}
+                  onCreateSheet={handleCreateSheet}
+                  onSelectSheet={handleSelectSheet}
                   onSelectFolder={handleSelectFolder}
-                  onDeletePage={handleDeletePage}
+                  onDeleteSheet={handleDeleteSheet}
                   onDeleteFolder={handleDeleteFolder}
-                  onUpdatePage={handleUpdatePageMetadata}
+                  onUpdateSheet={handleUpdateSheetMetadata}
                   onUpdateFolder={handleUpdateFolder}
-                  onMovePageToFolder={handleMovePageToFolder}
-                  onReorderPage={handleReorderPage}
+                  onMoveSheetToFolder={handleMoveSheetToFolder}
+                  onReorderSheet={reorderSheet}
+                  onReorderSheetToPosition={reorderSheetToPosition}
+                  onReorderFolder={reorderFolder}
                 />
               </ResizablePanel>
               <ResizableHandle withHandle />
@@ -332,17 +334,17 @@ function NotebookPageContent() {
                       </div>
                       <h3 className="text-lg font-medium mb-2">{currentFolder.name}</h3>
                       <p className="text-muted-foreground text-sm md:text-base mb-4">
-                        Select a note from this folder or create a new one.
+                        Select a sheet from this folder or create a new one.
                       </p>
                       <div className="flex gap-2 justify-center">
                         <Button
-                          onClick={() => handleCreatePage({
-                            title: 'Untitled',
+                          onClick={() => handleCreateSheet({
+                            title: 'Untitled Sheet',
                             folder_id: currentFolder.id
                           })}
                         >
                           <Plus className="w-4 h-4 mr-2" />
-                          New Note in Folder
+                          New Sheet in Folder
                         </Button>
                       </div>
                     </div>
@@ -351,16 +353,16 @@ function NotebookPageContent() {
                   <div className="flex flex-col h-full p-4">
                     <div className="flex flex-col items-center justify-center flex-1">
                       <div className="text-center max-w-md mb-6">
-                        <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-medium mb-2">Welcome to Team Notebook</h3>
+                        <Table className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">Welcome to Team Sheets</h3>
                         <p className="text-muted-foreground text-sm md:text-base mb-4">
-                          Organize your team&apos;s knowledge with notes and folders. Select a note from the sidebar or create a new one to get started.
+                          Organize your team&apos;s data with spreadsheets and folders. Select a sheet from the sidebar or create a new one to get started.
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button className="btn-accent" onClick={() => handleCreatePage({ title: 'Untitled' })}>
+                        <Button className="btn-accent" onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}>
                           <Plus className="w-4 h-4 mr-2" />
-                          {pages.length === 0 ? 'Create First Note' : 'Create New Note'}
+                          {sheets.length === 0 ? 'Create First Sheet' : 'Create New Sheet'}
                         </Button>
                       </div>
                     </div>
@@ -384,17 +386,17 @@ function NotebookPageContent() {
                 </div>
                 <h3 className="text-lg font-medium mb-2">{currentFolder.name}</h3>
                 <p className="text-muted-foreground text-sm md:text-base mb-4">
-                  Select a note from this folder or create a new one.
+                  Select a sheet from this folder or create a new one.
                 </p>
                 <div className="flex gap-2 justify-center">
                   <Button
-                    onClick={() => handleCreatePage({
-                      title: 'Untitled',
+                    onClick={() => handleCreateSheet({
+                      title: 'Untitled Sheet',
                       folder_id: currentFolder.id
                     })}
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    New Note in Folder
+                    New Sheet in Folder
                   </Button>
                 </div>
               </div>
@@ -402,15 +404,15 @@ function NotebookPageContent() {
           ) : (
             <div className="flex items-center justify-center min-h-full p-4">
               <div className="text-center max-w-md">
-                <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Welcome to Team Notebook</h3>
+                <Table className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Welcome to Team Sheets</h3>
                 <p className="text-muted-foreground text-sm md:text-base mb-4">
-                  Organize your team&apos;s knowledge with notes and folders. Select a note from the sidebar or create a new one to get started.
+                  Organize your team&apos;s data with spreadsheets and folders. Select a sheet from the sidebar or create a new one to get started.
                 </p>
                 <div className="flex flex-col gap-2 justify-center">
-                  <Button className="btn-accent" onClick={() => handleCreatePage({ title: 'Untitled' })}>
+                  <Button className="btn-accent" onClick={() => handleCreateSheet({ title: 'Untitled Sheet' })}>
                     <Plus className="w-4 h-4 mr-2" />
-                    {pages.length === 0 ? 'Create First Note' : 'Create New Note'}
+                    {sheets.length === 0 ? 'Create First Sheet' : 'Create New Sheet'}
                   </Button>
                 </div>
               </div>
@@ -422,21 +424,21 @@ function NotebookPageContent() {
   )
 }
 
-export default function NotebookPage() {
+export default function SheetsPage() {
   return (
     <Suspense fallback={
       <ProtectedRoute>
-        <DashboardLayout pageTitle="Notebooks" pageIcon={BookOpen} disableContentScroll={true}>
+        <DashboardLayout pageTitle="Sheets" pageIcon={Table} disableContentScroll={true}>
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading notebook...</p>
+              <p className="text-muted-foreground">Loading sheets...</p>
             </div>
           </div>
         </DashboardLayout>
       </ProtectedRoute>
     }>
-      <NotebookPageContent />
+      <SheetsPageContent />
     </Suspense>
   )
 }
