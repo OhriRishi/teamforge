@@ -1,7 +1,7 @@
--- Migration: v1.4.0
+-- Migration: v2.0.0
 -- Description: Add comprehensive Surveys feature with templates, ratings, and visibility controls
 -- Created: 2025-01-22
--- Consolidated from: v1.4.0-v1.6.0 migrations
+-- Consolidated from: v2.0.0 migrations
 
 -- ==============================================
 -- UP SECTION
@@ -801,7 +801,7 @@ COMMENT ON FUNCTION get_surveys_with_question_count(UUID, UUID) IS 'Returns surv
 
 -- Record this version in schema_versions
 INSERT INTO public.schema_versions (version, release_notes_path, description)
-VALUES ('1.4.0', '/releases/v1.4.0.md', 'Add comprehensive Surveys feature with templates, ratings, and visibility controls')
+VALUES ('2.0.0', '/releases/v2.0.0.md', 'Add comprehensive Surveys feature with templates, ratings, and visibility controls')
 ON CONFLICT (version) DO NOTHING;
 
 -- ==============================================
@@ -869,4 +869,4 @@ DROP TABLE IF EXISTS public.surveys;
 DROP TABLE IF EXISTS public.survey_templates;
 
 -- Remove version record
-DELETE FROM public.schema_versions WHERE version = '1.4.0';
+DELETE FROM public.schema_versions WHERE version = '2.0.0';

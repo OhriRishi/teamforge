@@ -44,12 +44,12 @@
         "1.2.0"
       ]
     },
-    "1.4.0": {
+    "2.0.0": {
       "migration": "0005_add_surveys.sql",
-      "releaseNotes": "/releases/v1.4.0.md",
+      "releaseNotes": "/releases/v2.0.0.md",
       "description": "Add comprehensive Surveys feature with templates, ratings, and visibility controls",
       "requiresVerification": true,
-      "verificationScript": "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'surveys') AS surveys_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_templates') AS survey_templates_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_questions') AS survey_questions_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_responses') AS survey_responses_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_answers') AS survey_answers_exists, EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'visibility') AS visibility_column_exists, EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'template_id') AS template_id_column_exists, EXISTS (SELECT FROM storage.buckets WHERE id = 'survey-templates') AS storage_bucket_exists, EXISTS (SELECT FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public' AND p.proname = 'get_surveys_with_question_count') AS helper_function_exists, EXISTS (SELECT FROM public.schema_versions WHERE version = '1.4.0') AS version_recorded;",
+      "verificationScript": "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'surveys') AS surveys_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_templates') AS survey_templates_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_questions') AS survey_questions_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_responses') AS survey_responses_exists, EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'survey_answers') AS survey_answers_exists, EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'visibility') AS visibility_column_exists, EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'surveys' AND column_name = 'template_id') AS template_id_column_exists, EXISTS (SELECT FROM storage.buckets WHERE id = 'survey-templates') AS storage_bucket_exists, EXISTS (SELECT FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public' AND p.proname = 'get_surveys_with_question_count') AS helper_function_exists, EXISTS (SELECT FROM public.schema_versions WHERE version = '2.0.0') AS version_recorded;",
       "estimatedTime": "1-2 minutes",
       "dependencies": [
         "1.3.0"
@@ -61,6 +61,6 @@
     "1.1.0",
     "1.2.0",
     "1.3.0",
-    "1.4.0"
+    "2.0.0"
   ]
 }
