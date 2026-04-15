@@ -123,7 +123,7 @@ export function useSheets() {
       }))
 
     } catch (error) {
-      console.error('Error fetching sheets data:', error)
+      console.error('Error fetching sheets data:', error, JSON.stringify(error, null, 2))
       setState(prev => ({
         ...prev,
         isLoading: false,

@@ -14,6 +14,7 @@ import {
   BookOpen,
   Clock
 } from 'lucide-react'
+import Link from 'next/link'
 import { BudgetComparisonChart } from './dashboard/BudgetComparisonChart'
 import { FundraisingPipelineChart } from './dashboard/FundraisingPipelineChart'
 import { TaskBreakdownChart } from './dashboard/TaskBreakdownChart'
@@ -36,6 +37,7 @@ interface DashboardStat {
   subtitle: string | null
   icon: React.ComponentType<{ className?: string }>
   progress?: number
+  href?: string
 }
 
 export function DashboardContent() {
@@ -86,12 +88,14 @@ export function DashboardContent() {
       value: statsLoading ? '...' : dashboardStats.teamMembers.toString(),
       subtitle: team ? `${team.team_name}` : 'Loading...',
       icon: Users,
+      href: '/team'
     },
     {
       title: 'Total Tasks',
       value: statsLoading ? '...' : dashboardStats.totalTasks.toString(),
       subtitle: `${dashboardStats.tasksCompleted} completed`,
       icon: CheckSquare,
+      href: '/tasks'
     },
     {
       title: 'Tasks Progress',
@@ -99,6 +103,7 @@ export function DashboardContent() {
       subtitle: null,
       icon: CheckSquare,
       progress: dashboardStats.tasksProgress,
+      href: '/tasks'
     },
     {
       title: 'Budget Utilization',
@@ -106,30 +111,35 @@ export function DashboardContent() {
       subtitle: `$${dashboardStats.totalFundsRaised.toLocaleString()} raised`,
       icon: DollarSign,
       progress: dashboardStats.budgetUtilization,
+      href: '/budget'
     },
     {
       title: 'Upcoming Events',
       value: statsLoading ? '...' : dashboardStats.upcomingEvents.toString(),
       subtitle: 'Next 30 days',
       icon: Calendar,
+      href: '/calendar'
     },
     {
       title: 'Competitions',
       value: statsLoading ? '...' : dashboardStats.competitions.toString(),
       subtitle: 'This season',
       icon: Trophy,
+      href: '/scouting'
     },
     {
       title: 'Notebook Pages',
       value: statsLoading ? '...' : dashboardStats.notebookPages.toString(),
       subtitle: 'This season',
       icon: BookOpen,
+      href: '/notebook'
     },
     {
       title: 'Mentoring Hours',
       value: statsLoading ? '...' : dashboardStats.mentoringHours.toFixed(1),
       subtitle: 'Total hours logged',
       icon: Clock,
+      href: '/mentoring'
     },
   ]
 
@@ -140,33 +150,44 @@ export function DashboardContent() {
         {stats.map((stat, index) => {
           const Icon = stat.icon
           return (
-            <Card key={index} className="@container/card">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pt-0 pb-0">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent className="pt-0 pb-0">
-                <div className="text-3xl font-bold tabular-nums @[250px]/card:text-4xl">{stat.value}</div>
-                {stat.progress !== undefined && (
-                  <div className="mt-1">
-                    <div className="w-full bg-secondary rounded-full h-1.5">
-                      <div
-                        className="h-1.5 rounded-full transition-all"
-                        style={{
-                          width: `${stat.progress}%`,
-                          backgroundColor: 'var(--accent-color)'
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-                {stat.subtitle && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{stat.subtitle}</p>
-                )}
-              </CardContent>
-            </Card>
+            <Link href={stat.href || '#'} key={index} className="block group">
+              <Card className="relative overflow-hidden transition-all duration-300 transform group-hover:scale-105 hover:shadow-lg @container/card h-full">
+                {/* Accent Color Sweep Animation */}
+                <div 
+                  className="absolute inset-0 transition-transform duration-500 origin-left scale-x-0 group-hover:scale-x-100 z-0 opacity-10"
+                  style={{ backgroundColor: 'var(--accent-color)' }}
+                />
+                
+                {/* Content */}
+                <div className="relative z-10 w-full h-full flex flex-col">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pt-0 pb-0 shrink-0">
+                    <CardTitle className="text-sm font-medium z-10">
+                      {stat.title}
+                    </CardTitle>
+                    <Icon className="h-4 w-4 text-muted-foreground group-hover:text-[var(--accent-color)] transition-colors z-10" />
+                  </CardHeader>
+                  <CardContent className="pt-0 pb-0 flex-1 flex flex-col justify-end">
+                    <div className="text-3xl font-bold tabular-nums @[250px]/card:text-4xl">{stat.value}</div>
+                    {stat.progress !== undefined && (
+                      <div className="mt-1">
+                        <div className="w-full bg-secondary rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full transition-all"
+                            style={{
+                              width: `${stat.progress}%`,
+                              backgroundColor: 'var(--accent-color)'
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    {stat.subtitle && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{stat.subtitle}</p>
+                    )}
+                  </CardContent>
+                </div>
+              </Card>
+            </Link>
           )
         })}
       </div>

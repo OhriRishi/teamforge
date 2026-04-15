@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/components/AuthProvider'
 import { useAppData } from '@/components/AppDataProvider'
@@ -20,7 +21,8 @@ import {
   ClipboardList,
   Shield,
   FileQuestion,
-  Table
+  Table,
+  MessageSquare
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -61,6 +63,7 @@ const coreModules = [
   { icon: Users, label: 'Mentoring', href: '/mentoring' },
   { icon: ClipboardList, label: 'Scouting', href: '/scouting' },
   { icon: FileQuestion, label: 'Surveys', href: '/surveys' },
+  { icon: MessageSquare, label: 'Team Chat', href: '/chat' },
 ]
 
 // Inner component that uses the sidebar context
@@ -100,7 +103,7 @@ function DashboardLayoutContent({
         <SidebarHeader>
           <div className="flex flex-col gap-2 md:gap-4">
             {/* App Logo and Name */}
-            <div className={`flex items-center gap-2 md:gap-3 px-2 py-1 md:py-2 ${state === "collapsed" ? "justify-center" : ""}`}>
+            <Link href="/dashboard" className={`flex items-center gap-2 md:gap-3 px-2 py-1 md:py-2 hover:opacity-80 transition-opacity cursor-pointer ${state === "collapsed" ? "justify-center" : ""}`}>
               <div className={`relative ${state === "collapsed" ? "w-6 h-6" : "w-6 h-6 md:w-8 md:h-8"}`}>
                 <Image
                   src="/logo.png"
@@ -115,11 +118,11 @@ function DashboardLayoutContent({
                   <h2 className="text-base md:text-lg font-semibold">FTC TeamForge</h2>
                 </div>
               )}
-            </div>
+            </Link>
 
             {/* Team Information */}
             <div className={`flex items-center justify-between border-t pt-2 md:pt-3 ${state === "collapsed" ? "justify-center" : ""}`}>
-              <div className={`flex items-center gap-2 md:gap-3 ${state === "collapsed" ? "flex-col gap-2" : ""}`}>
+              <Link href="/team" className={`flex items-center gap-2 md:gap-3 hover:opacity-80 transition-opacity cursor-pointer ${state === "collapsed" ? "flex-col gap-2" : ""}`}>
                 {/* Team Logo */}
                 <Avatar className={state === "collapsed" ? "w-8 h-8" : "w-8 h-8 md:w-10 md:h-10"}>
                   {team?.logo_url ? (
@@ -143,7 +146,7 @@ function DashboardLayoutContent({
                     </div>
                   </div>
                 )}
-              </div>
+              </Link>
             </div>
           </div>
         </SidebarHeader>
